@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -51,6 +53,33 @@ public class GlobalExceptionHandler {
             UnauthorizedException ex, HttpServletRequest request) {
         log.warn("Unauthorized access: {}", ex.getMessage());
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, null);
+    }
+
+    // -------------------------------------------------------------------------
+    // Spring Security exceptions (Phase 2)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Handles Spring Security authentication failures that reach controller-advice
+     * (e.g., bad credentials thrown by the authentication manager).
+     * Note: Most 401s are handled earlier by the custom entry point in SecurityConfig.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            AuthenticationException ex, HttpServletRequest request) {
+        log.warn("Authentication failure on [{}]: {}", request.getRequestURI(), ex.getMessage());
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication failed", request, null);
+    }
+
+    /**
+     * Handles access denied exceptions that reach controller-advice.
+     * Note: Most 403s are handled earlier by the custom handler in SecurityConfig.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            AccessDeniedException ex, HttpServletRequest request) {
+        log.warn("Access denied on [{}]: {}", request.getRequestURI(), ex.getMessage());
+        return buildResponse(HttpStatus.FORBIDDEN, "Access denied — insufficient permissions", request, null);
     }
 
     // -------------------------------------------------------------------------
